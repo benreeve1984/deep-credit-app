@@ -32,16 +32,20 @@ class OpenAIClient:
     def __init__(self):
         """Initialize the OpenAI client with API key from environment."""
         self.api_key = os.getenv("OPENAI_API_KEY")
+        self.webhook_secret = os.getenv("OPENAI_WEBHOOK_SECRET")
+        
+        # Initialize client lazily to avoid startup errors
+        self.client = None
+    
+    def _ensure_client(self):
+        """Ensure the OpenAI client is initialized."""
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
-        
-        # Initialize the async OpenAI client
-        self.client = AsyncOpenAI(api_key=self.api_key)
-        
-        # Get webhook secret for signature verification
-        self.webhook_secret = os.getenv("OPENAI_WEBHOOK_SECRET")
         if not self.webhook_secret:
             raise ValueError("OPENAI_WEBHOOK_SECRET environment variable is required")
+        
+        if self.client is None:
+            self.client = AsyncOpenAI(api_key=self.api_key)
     
     async def create_background_response(
         self, 
@@ -64,6 +68,9 @@ class OpenAIClient:
             Dictionary containing the response ID and status
         """
         try:
+            # Ensure client is initialized
+            self._ensure_client()
+            
             # Create a completion request with background processing
             # Note: This is a simulated approach since OpenAI doesn't have a direct "background" API
             # In practice, you might use their Assistants API or handle long requests differently

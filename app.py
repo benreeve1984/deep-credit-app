@@ -26,8 +26,10 @@ from openai_client import openai_client
 # In production, you'd use Redis, PostgreSQL, or another persistent store
 task_storage: Dict[str, Dict[str, Any]] = {}
 
-# Create the FastHTML app
+# Create the FastHTML app with a fixed secret key for serverless deployment
 app, rt = fast_app(
+    # Use a fixed secret key to avoid filesystem writes in serverless environments
+    secret_key="your-secret-key-for-sessions-change-this-in-production",
     hdrs=[
         # Include HTMX for dynamic frontend interactions
         Script(src="https://unpkg.com/htmx.org@1.9.9"),
@@ -113,6 +115,35 @@ async def homepage():
     - Poll for status updates every 2 seconds
     - Swap content dynamically based on task status
     """
+    # Check if environment variables are configured
+    try:
+        openai_client._ensure_client()
+    except ValueError as e:
+        return Titled("Configuration Required",
+            Div(
+                H1("⚙️ Configuration Required"),
+                P("Your FastHTML + OpenAI webhook demo is deployed, but needs configuration:"),
+                
+                Div(
+                    H3("🔧 Required Environment Variables"),
+                    P("Please set these in your Vercel dashboard:"),
+                    Pre("""OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_WEBHOOK_SECRET=your_webhook_secret_here""", 
+                        style="background: #f5f5f5; padding: 15px; border-radius: 5px;"),
+                    
+                    H3("🔗 Webhook URL"),
+                    P("Configure this URL in your OpenAI dashboard:"),
+                    Pre("https://deep-credit-app.vercel.app/api/webhook", 
+                        style="background: #f5f5f5; padding: 15px; border-radius: 5px;"),
+                    
+                    P(f"Error: {str(e)}", style="color: red; font-style: italic;"),
+                    
+                    cls="container"
+                ),
+                
+                cls="container"
+            )
+        )
     return Titled("OpenAI Background Processing Demo",
         Div(
             H1("OpenAI Background Processing Demo"),
