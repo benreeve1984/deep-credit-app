@@ -210,16 +210,25 @@ async def queue_task(request: Request):
         
         # Create background task with OpenAI
         try:
+            print(f"Attempting OpenAI API call with prompt: {prompt[:50]}...")
+            print(f"Webhook URL: {webhook_url}")
+            
             response = await openai_client.create_background_response(
                 prompt=prompt,
                 webhook_url=webhook_url
             )
+            
+            print(f"OpenAI response received: {response}")
+            
         except Exception as openai_error:
             # Log the actual error for debugging
             print(f"OpenAI API Error: {str(openai_error)}")
+            print(f"Error type: {type(openai_error)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
             return Div(
                 P(f"❌ OpenAI API Error: {str(openai_error)}"),
-                P("Check your environment variables and API key permissions."),
+                P(f"Error type: {type(openai_error).__name__}"),
                 cls="status error"
             )
         

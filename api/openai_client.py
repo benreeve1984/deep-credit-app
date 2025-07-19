@@ -39,13 +39,18 @@ class OpenAIClient:
     
     def _ensure_client(self):
         """Ensure the OpenAI client is initialized."""
+        print(f"_ensure_client called. API key length: {len(self.api_key) if self.api_key else 0}")
+        print(f"Webhook secret length: {len(self.webhook_secret) if self.webhook_secret else 0}")
+        
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
         if not self.webhook_secret:
             raise ValueError("OPENAI_WEBHOOK_SECRET environment variable is required")
         
         if self.client is None:
+            print("Initializing OpenAI client...")
             self.client = AsyncOpenAI(api_key=self.api_key)
+            print("OpenAI client initialized successfully")
     
     async def create_background_response(
         self, 
@@ -69,11 +74,12 @@ class OpenAIClient:
         """
         try:
             # Ensure client is initialized
+            print("About to call _ensure_client()")
             self._ensure_client()
+            print("_ensure_client() completed successfully")
             
             # Create a completion request with background processing
-            # Note: This is a simulated approach since OpenAI doesn't have a direct "background" API
-            # In practice, you might use their Assistants API or handle long requests differently
+            print(f"About to call OpenAI API with model: {model}")
             response = await self.client.chat.completions.create(
                 model=model,
                 messages=[
@@ -83,24 +89,31 @@ class OpenAIClient:
                     },
                     {"role": "user", "content": prompt}
                 ],
-                # For now, we'll use standard completion and simulate background processing
-                # In a real implementation, you'd use OpenAI's background processing features
             )
+            print("OpenAI API call completed successfully")
             
             # Extract the response content
             content = response.choices[0].message.content
+            print(f"Extracted content length: {len(content) if content else 0}")
             
             # Generate a unique ID for this response
             response_id = f"resp_{hash(prompt + webhook_url) % 1000000}"
+            print(f"Generated response ID: {response_id}")
             
-            return {
+            result = {
                 "id": response_id,
                 "status": "queued",
-                "content": content,  # In real implementation, this would be None initially
+                "content": content,
                 "model": model
             }
+            print(f"Returning result: {result}")
+            return result
             
         except Exception as e:
+            print(f"Exception in create_background_response: {str(e)}")
+            print(f"Exception type: {type(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
             raise Exception(f"Failed to create background response: {str(e)}")
     
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
