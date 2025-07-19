@@ -29,8 +29,10 @@ from openai_client import openai_client
 # In production, you'd use Redis, PostgreSQL, or another persistent store
 task_storage: Dict[str, Dict[str, Any]] = {}
 
-# Create the FastHTML app
+# Create the FastHTML app with explicit secret key to avoid filesystem writes
 app, rt = fast_app(
+    # Provide a secret key to prevent FastHTML from trying to write .sesskey file in serverless env
+    secret_key="demo-secret-key-for-serverless-deployment",
     hdrs=[
         # Include HTMX for dynamic frontend interactions
         Script(src="https://unpkg.com/htmx.org@1.9.9"),
