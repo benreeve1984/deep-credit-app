@@ -20,6 +20,8 @@ from typing import Dict, Any, Optional
 from fasthtml.common import *
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+
+# Import our OpenAI client (local to this directory)
 from openai_client import openai_client
 
 # In-memory storage for task results
@@ -189,18 +191,7 @@ OPENAI_WEBHOOK_SECRET=your_webhook_secret_here""",
 
 @rt("/api/queue")
 async def queue_task(request: Request):
-    """
-    Queue a new background task with OpenAI.
-    
-    Accepts POST requests with JSON: {"prompt": "user's prompt"}
-    Returns the task ID and starts polling for status updates.
-    
-    This endpoint:
-    1. Validates the incoming prompt
-    2. Calls OpenAI API with background processing
-    3. Stores initial task state
-    4. Returns HTMX response that starts status polling
-    """
+    """Queue a new background task with OpenAI."""
     try:
         # Parse form data (HTMX sends form data, not JSON)
         form_data = await request.form()
@@ -213,7 +204,6 @@ async def queue_task(request: Request):
             )
         
         # Get the base URL for webhook callbacks
-        # In production, this would be your deployed domain
         base_url = str(request.base_url).rstrip('/')
         webhook_url = f"{base_url}/api/webhook"
         
@@ -236,7 +226,6 @@ async def queue_task(request: Request):
         }
         
         # For demonstration, we'll simulate the webhook callback after a short delay
-        # In real implementation, OpenAI would call your webhook when processing completes
         asyncio.create_task(simulate_webhook_callback(task_id, response["content"]))
         
         # Return HTMX response that starts polling for status
@@ -262,16 +251,9 @@ async def queue_task(request: Request):
         )
 
 async def simulate_webhook_callback(task_id: str, content: str):
-    """
-    Simulate webhook callback after a delay.
-    
-    In a real implementation, this would be triggered by OpenAI
-    calling your /api/webhook endpoint when the task completes.
-    """
-    # Wait 3-5 seconds to simulate processing time
+    """Simulate webhook callback after a delay."""
     await asyncio.sleep(4)
     
-    # Update task status as if webhook was called
     if task_id in task_storage:
         task_storage[task_id].update({
             "status": "completed",
@@ -281,30 +263,17 @@ async def simulate_webhook_callback(task_id: str, content: str):
 
 @rt("/api/webhook")
 async def webhook_callback(request: Request):
-    """
-    Receive webhook callbacks from OpenAI when background tasks complete.
-    
-    This endpoint:
-    1. Verifies the webhook signature for security
-    2. Parses the webhook payload
-    3. Updates task status in storage
-    4. Returns appropriate HTTP status codes
-    
-    OpenAI will call this endpoint when your background task finishes.
-    """
+    """Receive webhook callbacks from OpenAI when background tasks complete."""
     try:
-        # Get raw request body and signature header
         body = await request.body()
         signature = request.headers.get("X-OpenAI-Signature", "")
         
-        # Verify that the request actually came from OpenAI
         if not openai_client.verify_webhook_signature(body, signature):
             return JSONResponse(
                 {"error": "Invalid webhook signature"}, 
                 status_code=401
             )
         
-        # Parse the webhook payload
         payload = openai_client.parse_webhook_payload(body)
         if not payload:
             return JSONResponse(
@@ -312,8 +281,6 @@ async def webhook_callback(request: Request):
                 status_code=400
             )
         
-        # Extract task information from webhook
-        # The exact structure depends on OpenAI's webhook format
         task_id = payload.get("id")
         event_type = payload.get("type", "")
         
@@ -323,9 +290,7 @@ async def webhook_callback(request: Request):
                 status_code=404
             )
         
-        # Handle different webhook event types
         if event_type == "response.completed":
-            # Task completed successfully
             output_text = payload.get("output", {}).get("text", "")
             task_storage[task_id].update({
                 "status": "completed",
@@ -334,7 +299,6 @@ async def webhook_callback(request: Request):
             })
             
         elif event_type == "response.failed":
-            # Task failed
             error_message = payload.get("error", {}).get("message", "Unknown error")
             task_storage[task_id].update({
                 "status": "failed",
@@ -342,7 +306,6 @@ async def webhook_callback(request: Request):
                 "completed_at": asyncio.get_event_loop().time()
             })
         
-        # Return success response to OpenAI
         return JSONResponse({"status": "received"})
         
     except Exception as e:
@@ -353,17 +316,7 @@ async def webhook_callback(request: Request):
 
 @rt("/api/status/{task_id}")
 async def get_task_status(task_id: str):
-    """
-    Get the current status of a background task.
-    
-    Returns HTMX content that shows:
-    - Current task status (processing, completed, failed)
-    - Task output when available
-    - Automatically stops polling when task is complete
-    
-    This endpoint is called by HTMX polling every 2 seconds.
-    """
-    # Look up task in storage
+    """Get the current status of a background task."""
     task = task_storage.get(task_id)
     
     if not task:
@@ -376,14 +329,12 @@ async def get_task_status(task_id: str):
     status = task["status"]
     
     if status == "processing":
-        # Task still running - continue polling
         return Div(
             Div(
                 Span(cls="spinner"),
                 f"Processing... (Task ID: {task_id})",
                 cls="status loading"
             ),
-            # Keep polling by maintaining the HTMX attributes
             id="status-updates",
             hx_get=f"/api/status/{task_id}",
             hx_trigger="every 2s",
@@ -391,7 +342,6 @@ async def get_task_status(task_id: str):
         )
     
     elif status == "completed":
-        # Task completed - show results and stop polling
         return Div(
             Div(
                 P("✅ Task completed successfully!"),
@@ -401,12 +351,10 @@ async def get_task_status(task_id: str):
                 ),
                 cls="status completed"
             ),
-            # No more HTMX polling attributes - polling stops
             id="status-updates"
         )
     
     elif status == "failed":
-        # Task failed - show error and stop polling
         error_msg = task.get("error", "Unknown error occurred")
         return Div(
             Div(
@@ -418,24 +366,16 @@ async def get_task_status(task_id: str):
         )
     
     else:
-        # Unknown status
         return Div(
             P(f"❓ Unknown status: {status}"),
             cls="status error",
             id="status-updates"
         )
 
-# Health check endpoint for deployment verification
 @rt("/health")
 async def health_check():
     """Simple health check endpoint."""
     return JSONResponse({"status": "healthy", "service": "openai-webhook-demo"})
 
-# Export the app for Vercel deployment
-# Vercel's Python runtime should automatically detect this ASGI app
-application = app
-
-# For local development
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True) 
+# Export for Vercel
+app_for_vercel = app 
