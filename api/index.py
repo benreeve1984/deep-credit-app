@@ -216,18 +216,17 @@ async def queue_task(request: Request):
         
         task_id = response["id"]
         
-        # Store initial task state in memory
+        # Store initial task state in memory  
         task_storage[task_id] = {
             "id": task_id,
             "prompt": prompt,
-            "status": "processing",
+            "status": "queued",  # Will be updated to "processing" then "completed" via webhook
             "output": None,
             "created_at": asyncio.get_event_loop().time(),
             "webhook_url": webhook_url
         }
         
-        # For demonstration, we'll simulate the webhook callback after a short delay
-        asyncio.create_task(simulate_webhook_callback(task_id, response["content"]))
+        # OpenAI will call our /api/webhook endpoint when processing completes
         
         # Return HTMX response that starts polling for status
         return Div(
@@ -250,17 +249,6 @@ async def queue_task(request: Request):
             P(f"❌ Error: {str(e)}"),
             cls="status error"
         )
-
-async def simulate_webhook_callback(task_id: str, content: str):
-    """Simulate webhook callback after a delay."""
-    await asyncio.sleep(4)
-    
-    if task_id in task_storage:
-        task_storage[task_id].update({
-            "status": "completed",
-            "output": content,
-            "completed_at": asyncio.get_event_loop().time()
-        })
 
 @rt("/api/webhook")
 async def webhook_callback(request: Request):
@@ -329,11 +317,12 @@ async def get_task_status(task_id: str):
     
     status = task["status"]
     
-    if status == "processing":
+    if status in ["queued", "processing"]:
+        status_text = "Queued..." if status == "queued" else "Processing..."
         return Div(
             Div(
                 Span(cls="spinner"),
-                f"Processing... (Task ID: {task_id})",
+                f"{status_text} (Task ID: {task_id})",
                 cls="status loading"
             ),
             id="status-updates",
