@@ -41,12 +41,9 @@ pip install -r requirements.txt
 # Copy the example environment file
 cp env.example .env
 
-# Generate a webhook secret
-export OPENAI_WEBHOOK_SECRET=$(openssl rand -hex 32)
-
 # Edit .env and add your OpenAI API key:
 # OPENAI_API_KEY=your_actual_openai_api_key_here
-# OPENAI_WEBHOOK_SECRET=<generated_secret_from_above>
+# OPENAI_WEBHOOK_SECRET=get_this_from_openai_dashboard
 ```
 
 ### 3. Run the Application
@@ -78,29 +75,28 @@ vercel --prod
 # - Click "Deploy"
 ```
 
-### 2. Set Environment Variables in Vercel
+### 2. Configure OpenAI Webhook (Optional)
 
-After deployment, set these environment variables in your Vercel dashboard:
+If you're using actual OpenAI background processing (not the demo simulation):
+
+1. Go to your **OpenAI Dashboard** → **Webhooks**
+2. Click **"Create Webhook"**
+3. Configure:
+   - **URL**: `https://deep-credit-app.vercel.app/api/webhook`
+   - **Events**: Select `response.completed`, `response.failed`, etc.
+4. **Copy the generated secret** - OpenAI automatically generates this for you
+
+### 3. Set Environment Variables in Vercel
 
 1. Go to your Vercel project → Settings → Environment Variables
 2. Add these variables:
 
 ```
 OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_WEBHOOK_SECRET=generate_with_openssl_rand_hex_32
+OPENAI_WEBHOOK_SECRET=secret_copied_from_openai_dashboard
 ```
 
-To generate the webhook secret:
-```bash
-openssl rand -hex 32
-```
-
-### 3. Configure OpenAI Webhook URL (Optional)
-
-If you're using actual OpenAI background processing (not the demo simulation), configure your webhook URL in the OpenAI dashboard:
-
-- **Webhook URL**: `https://your-app.vercel.app/api/webhook`
-- **Secret**: Use the same `OPENAI_WEBHOOK_SECRET` from step 2
+**Note**: The `OPENAI_WEBHOOK_SECRET` comes from your OpenAI webhook configuration (Step 2), not something you generate yourself.
 
 ## 🎯 How It Works
 

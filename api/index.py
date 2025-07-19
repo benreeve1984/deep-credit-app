@@ -16,6 +16,7 @@ Endpoints:
 
 import asyncio
 import json
+import os
 from typing import Dict, Any, Optional
 from fasthtml.common import *
 from starlette.requests import Request
@@ -28,10 +29,8 @@ from openai_client import openai_client
 # In production, you'd use Redis, PostgreSQL, or another persistent store
 task_storage: Dict[str, Dict[str, Any]] = {}
 
-# Create the FastHTML app with a fixed secret key for serverless deployment
+# Create the FastHTML app
 app, rt = fast_app(
-    # Use a fixed secret key to avoid filesystem writes in serverless environments
-    secret_key="your-secret-key-for-sessions-change-this-in-production",
     hdrs=[
         # Include HTMX for dynamic frontend interactions
         Script(src="https://unpkg.com/htmx.org@1.9.9"),

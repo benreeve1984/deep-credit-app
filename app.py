@@ -431,9 +431,8 @@ async def health_check():
     """Simple health check endpoint."""
     return JSONResponse({"status": "healthy", "service": "openai-webhook-demo"})
 
-# Export the app for Vercel deployment
-# Vercel's Python runtime should automatically detect this ASGI app
-application = app
+# Note: This file is kept for backward compatibility
+# The actual application is now in api/index.py for proper Vercel deployment
 
 # For local development
 if __name__ == "__main__":
