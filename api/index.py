@@ -209,10 +209,19 @@ async def queue_task(request: Request):
         webhook_url = f"{base_url}/api/webhook"
         
         # Create background task with OpenAI
-        response = await openai_client.create_background_response(
-            prompt=prompt,
-            webhook_url=webhook_url
-        )
+        try:
+            response = await openai_client.create_background_response(
+                prompt=prompt,
+                webhook_url=webhook_url
+            )
+        except Exception as openai_error:
+            # Log the actual error for debugging
+            print(f"OpenAI API Error: {str(openai_error)}")
+            return Div(
+                P(f"❌ OpenAI API Error: {str(openai_error)}"),
+                P("Check your environment variables and API key permissions."),
+                cls="status error"
+            )
         
         task_id = response["id"]
         
@@ -366,6 +375,18 @@ async def get_task_status(task_id: str):
 async def health_check():
     """Simple health check endpoint."""
     return JSONResponse({"status": "healthy", "service": "openai-webhook-demo"})
+
+@rt("/debug")
+async def debug_env():
+    """Debug endpoint to check environment variables."""
+    import os
+    return JSONResponse({
+        "openai_api_key_set": bool(os.getenv("OPENAI_API_KEY")),
+        "openai_api_key_length": len(os.getenv("OPENAI_API_KEY", "")),
+        "webhook_secret_set": bool(os.getenv("OPENAI_WEBHOOK_SECRET")),
+        "webhook_secret_length": len(os.getenv("OPENAI_WEBHOOK_SECRET", "")),
+        "environment": os.getenv("VERCEL", "local")
+    })
 
 # Export for Vercel
 app_for_vercel = app 

@@ -51,7 +51,7 @@ class OpenAIClient:
         self, 
         prompt: str, 
         webhook_url: str,
-        model: str = "gpt-4"
+        model: str = "o3"
     ) -> Dict[str, Any]:
         """
         Create a response with background processing enabled.
